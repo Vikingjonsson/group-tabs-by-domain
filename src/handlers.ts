@@ -44,11 +44,24 @@ const isGroupableTab = (tab: chrome.tabs.Tab): boolean => {
   return !!tab.url && !!tab.id && tab.windowId !== undefined && !tab.pinned;
 };
 
-const buildTabIdsByDomainByWindow = (tabs: chrome.tabs.Tab[]): TabIdsByDomainByWindow => {
+const isInUserOwnedGroup = (
+  tab: chrome.tabs.Tab,
+  extensionGroupIds: Map<number, string>
+): boolean => {
+  const groupId = tab.groupId;
+  if (groupId === undefined || groupId === -1) return false;
+  return !extensionGroupIds.has(groupId);
+};
+
+const buildTabIdsByDomainByWindow = (
+  tabs: chrome.tabs.Tab[],
+  extensionGroupIds: Map<number, string>
+): TabIdsByDomainByWindow => {
   const result: TabIdsByDomainByWindow = {};
 
   for (const tab of tabs) {
     if (!isGroupableTab(tab)) continue;
+    if (isInUserOwnedGroup(tab, extensionGroupIds)) continue;
 
     const domain = extractBaseDomain(tab.url!);
     if (!domain) continue;
@@ -70,7 +83,7 @@ const createNewTabGroup = async (
   tabIds: TabId[],
   domain: Domain,
   windowId: WindowId
-): Promise<void> => {
+): Promise<number> => {
   const groupId = await chrome.tabs.group({
     tabIds: asNonEmptyArray(tabIds),
     createProperties: { windowId },
@@ -80,6 +93,8 @@ const createNewTabGroup = async (
     title: domain,
     color: getDeterministicColorForDomain(domain),
   });
+
+  return groupId;
 };
 
 const addTabsToExistingGroup = async (
@@ -87,28 +102,34 @@ const addTabsToExistingGroup = async (
   domain: Domain,
   windowId: WindowId,
   existingGroupId: number
-): Promise<void> => {
+): Promise<number> => {
   try {
     await chrome.tabs.group({ tabIds: asNonEmptyArray(tabIds), groupId: existingGroupId });
+    return existingGroupId;
   } catch {
-    await createNewTabGroup(tabIds, domain, windowId);
+    return await createNewTabGroup(tabIds, domain, windowId);
   }
 };
 
 const ensureDomainIsGroupedInWindow = async (
   domain: Domain,
   tabIds: TabId[],
-  windowId: WindowId
-): Promise<void> => {
+  windowId: WindowId,
+  extensionGroupIds: Map<number, string>
+): Promise<number> => {
   const existingGroupsForDomain = await chrome.tabGroups.query({
     windowId,
     title: domain,
   });
 
-  if (existingGroupsForDomain.length === 0) {
-    await createNewTabGroup(tabIds, domain, windowId);
+  const extensionOwnedGroup = existingGroupsForDomain.find((g) =>
+    extensionGroupIds.has(g.id)
+  );
+
+  if (!extensionOwnedGroup) {
+    return await createNewTabGroup(tabIds, domain, windowId);
   } else {
-    await addTabsToExistingGroup(tabIds, domain, windowId, existingGroupsForDomain[0].id);
+    return await addTabsToExistingGroup(tabIds, domain, windowId, extensionOwnedGroup.id);
   }
 };
 
@@ -116,29 +137,41 @@ const extractValidTabIds = (tabs: chrome.tabs.Tab[]): TabId[] => {
   return tabs.map((tab) => tab.id).filter((id): id is TabId => id !== undefined);
 };
 
-export const groupTabsByDomain = async (shouldGroupSingleTabs = false): Promise<void> => {
+export const groupTabsByDomain = async (
+  shouldGroupSingleTabs = false,
+  extensionGroupIds: Map<number, string> = new Map()
+): Promise<Map<number, string>> => {
   const allTabs = await chrome.tabs.query({});
-  const tabIdsByDomainByWindow = buildTabIdsByDomainByWindow(allTabs);
+  const tabIdsByDomainByWindow = buildTabIdsByDomainByWindow(allTabs, extensionGroupIds);
   const MINIMUM_TABS_TO_GROUP = shouldGroupSingleTabs ? 1 : 2;
+  const newGroups = new Map<number, string>();
 
   for (const [windowIdString, tabIdsByDomain] of Object.entries(tabIdsByDomainByWindow)) {
     const windowId = parseInt(windowIdString, 10);
 
     for (const [domain, tabIds] of Object.entries(tabIdsByDomain)) {
       if (tabIds.length >= MINIMUM_TABS_TO_GROUP) {
-        await ensureDomainIsGroupedInWindow(domain, tabIds, windowId);
+        const groupId = await ensureDomainIsGroupedInWindow(domain, tabIds, windowId, extensionGroupIds);
+        if (!extensionGroupIds.has(groupId)) {
+          newGroups.set(groupId, domain);
+        }
       }
     }
   }
+
+  return newGroups;
 };
 
 export const dissolveGroupsWithTooFewTabs = async (
-  shouldGroupSingleTabs = false
+  shouldGroupSingleTabs = false,
+  extensionGroupIds: Map<number, string> = new Map()
 ): Promise<void> => {
   const allGroups = await chrome.tabGroups.query({});
   const MINIMUM_TABS_TO_GROUP = shouldGroupSingleTabs ? 1 : 2;
 
   for (const group of allGroups) {
+    if (!extensionGroupIds.has(group.id)) continue;
+
     const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
     const tabIds = extractValidTabIds(tabsInGroup);
 
@@ -177,4 +210,20 @@ export const collapseAllInactiveGroups = async (): Promise<void> => {
 
 export const isValidTabUrl = (url: string | undefined): boolean => {
   return !!url && url !== NEW_TAB_URL;
+};
+
+export const cleanExtensionGroupIds = (
+  extensionGroupIds: Map<number, string>,
+  existingGroups: chrome.tabGroups.TabGroup[]
+): Map<number, string> => {
+  const cleaned = new Map(extensionGroupIds);
+
+  for (const [groupId, expectedDomain] of extensionGroupIds) {
+    const group = existingGroups.find((g) => g.id === groupId);
+    if (!group || group.title !== expectedDomain) {
+      cleaned.delete(groupId);
+    }
+  }
+
+  return cleaned;
 };
