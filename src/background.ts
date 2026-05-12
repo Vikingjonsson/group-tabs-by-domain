@@ -4,10 +4,12 @@ import {
   collapseAllGroupsExcept,
   collapseAllInactiveGroups,
   isValidTabUrl,
+  cleanExtensionGroupIds,
 } from './handlers';
 
 const STORAGE_KEY_GROUP_SINGLE_TABS = 'groupSingleTabs';
 const STORAGE_KEY_AUTO_COLLAPSE = 'autoCollapseInactive';
+const STORAGE_KEY_EXTENSION_GROUP_IDS = 'extensionGroupIds';
 const MENU_ID_GROUP_SINGLE_TABS = 'group-single-tabs';
 const MENU_ID_AUTO_COLLAPSE = 'auto-collapse-inactive';
 const DEBOUNCE_DELAY_MS = 100;
@@ -19,6 +21,23 @@ const state = {
   isProcessingTabChanges: false,
   isCollapsingGroups: false,
   tabChangeDebounceTimer: null as ReturnType<typeof setTimeout> | null,
+  extensionGroupIds: new Map<number, string>(),
+};
+
+const loadExtensionGroupIds = async (): Promise<void> => {
+  const stored = await chrome.storage.session.get({ [STORAGE_KEY_EXTENSION_GROUP_IDS]: {} });
+  const record = stored[STORAGE_KEY_EXTENSION_GROUP_IDS] as Record<string, string>;
+  state.extensionGroupIds = new Map(
+    Object.entries(record).map(([id, domain]) => [parseInt(id, 10), domain])
+  );
+};
+
+const saveExtensionGroupIds = async (): Promise<void> => {
+  const record: Record<string, string> = {};
+  for (const [id, domain] of state.extensionGroupIds) {
+    record[id.toString()] = domain;
+  }
+  await chrome.storage.session.set({ [STORAGE_KEY_EXTENSION_GROUP_IDS]: record });
 };
 
 const processTabChanges = async (): Promise<void> => {
@@ -27,8 +46,17 @@ const processTabChanges = async (): Promise<void> => {
   state.isProcessingTabChanges = true;
   try {
     await refreshSettingsFromStorage();
-    await groupTabsByDomain(state.shouldGroupSingleTabs);
-    await dissolveGroupsWithTooFewTabs(state.shouldGroupSingleTabs);
+
+    const allGroups = await chrome.tabGroups.query({});
+    state.extensionGroupIds = cleanExtensionGroupIds(state.extensionGroupIds, allGroups);
+
+    const newGroups = await groupTabsByDomain(state.shouldGroupSingleTabs, state.extensionGroupIds);
+    for (const [groupId, domain] of newGroups) {
+      state.extensionGroupIds.set(groupId, domain);
+    }
+
+    await dissolveGroupsWithTooFewTabs(state.shouldGroupSingleTabs, state.extensionGroupIds);
+    await saveExtensionGroupIds();
   } finally {
     state.isProcessingTabChanges = false;
   }
@@ -89,6 +117,7 @@ const handleAutoCollapseToggle = async (isChecked: boolean): Promise<void> => {
 };
 
 const initializeExtension = async (): Promise<void> => {
+  await loadExtensionGroupIds();
   await refreshSettingsFromStorage();
   createContextMenu();
 };
