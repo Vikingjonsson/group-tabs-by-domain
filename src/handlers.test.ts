@@ -333,6 +333,20 @@ describe('groupTabsByDomain', () => {
     ];
     expect(VALID_COLORS).toContain(mockGroups[0].color);
   });
+
+  it('safely handles URLs with __proto__ hostname', async () => {
+    createMockTab(1, 'https://__proto__/a', 1);
+    createMockTab(2, 'https://__proto__/b', 1);
+    await groupTabsByDomain();
+
+    expect(mockGroups).toHaveLength(1);
+    expect(mockGroups[0].title).toBe('__proto__');
+
+    // Ensure Object.prototype wasn't polluted with an array
+    expect(
+      Array.isArray((Object.prototype as any)['__proto__']) || Array.isArray(Object.prototype)
+    ).toBe(false);
+  });
 });
 
 describe('groupTabsByDomain - ignored tabs', () => {
