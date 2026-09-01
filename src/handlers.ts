@@ -115,12 +115,10 @@ const ensureDomainIsGroupedInWindow = async (
   domain: Domain,
   tabIds: TabId[],
   windowId: WindowId,
-  extensionGroupIds: Map<number, string>
+  extensionGroupIds: Map<number, string>,
+  existingGroupsForWindow: chrome.tabGroups.TabGroup[]
 ): Promise<number> => {
-  const existingGroupsForDomain = await chrome.tabGroups.query({
-    windowId,
-    title: domain,
-  });
+  const existingGroupsForDomain = existingGroupsForWindow.filter((g) => g.title === domain);
 
   const extensionOwnedGroup = existingGroupsForDomain.find((g) => extensionGroupIds.has(g.id));
 
@@ -140,12 +138,14 @@ export const groupTabsByDomain = async (
   extensionGroupIds: Map<number, string> = new Map()
 ): Promise<Map<number, string>> => {
   const allTabs = await chrome.tabs.query({});
+  const allGroups = await chrome.tabGroups.query({});
   const tabIdsByDomainByWindow = buildTabIdsByDomainByWindow(allTabs, extensionGroupIds);
   const MINIMUM_TABS_TO_GROUP = shouldGroupSingleTabs ? 1 : 2;
   const newGroups = new Map<number, string>();
 
   for (const [windowIdString, tabIdsByDomain] of Object.entries(tabIdsByDomainByWindow)) {
     const windowId = parseInt(windowIdString, 10);
+    const existingGroupsForWindow = allGroups.filter((g) => g.windowId === windowId);
 
     for (const [domain, tabIds] of Object.entries(tabIdsByDomain)) {
       if (tabIds.length >= MINIMUM_TABS_TO_GROUP) {
@@ -153,7 +153,8 @@ export const groupTabsByDomain = async (
           domain,
           tabIds,
           windowId,
-          extensionGroupIds
+          extensionGroupIds,
+          existingGroupsForWindow
         );
         if (!extensionGroupIds.has(groupId)) {
           newGroups.set(groupId, domain);
