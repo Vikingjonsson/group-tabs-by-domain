@@ -217,9 +217,14 @@ export const cleanExtensionGroupIds = (
   existingGroups: chrome.tabGroups.TabGroup[]
 ): Map<number, string> => {
   const cleaned = new Map(extensionGroupIds);
+  const existingGroupsMap = new Map<number, chrome.tabGroups.TabGroup>();
+
+  for (const group of existingGroups) {
+    existingGroupsMap.set(group.id, group);
+  }
 
   for (const [groupId, expectedDomain] of extensionGroupIds) {
-    const group = existingGroups.find((g) => g.id === groupId);
+    const group = existingGroupsMap.get(groupId);
     if (!group || group.title !== expectedDomain) {
       cleaned.delete(groupId);
     }
