@@ -5,6 +5,7 @@ import {
   collapseAllInactiveGroups,
   isValidTabUrl,
   cleanExtensionGroupIds,
+  extractBaseDomain,
 } from './handlers';
 
 const mockTabs: chrome.tabs.Tab[] = [];
@@ -140,6 +141,48 @@ const setActiveTab = (tabIndex: number): void => {
   }
   (mockTabs[tabIndex] as any).active = true;
 };
+
+describe('extractBaseDomain', () => {
+  it('extracts standard domains correctly', () => {
+    expect(extractBaseDomain('https://example.com')).toBe('example.com');
+    expect(extractBaseDomain('http://google.com/search?q=test')).toBe('google.com');
+  });
+
+  it('strips www. prefix', () => {
+    expect(extractBaseDomain('https://www.example.com')).toBe('example.com');
+    expect(extractBaseDomain('http://www.google.com/search?q=test')).toBe('google.com');
+  });
+
+  it('preserves other subdomains', () => {
+    expect(extractBaseDomain('https://maps.google.com')).toBe('maps.google.com');
+    expect(extractBaseDomain('http://blog.example.com/post/1')).toBe('blog.example.com');
+    expect(extractBaseDomain('https://www.sub.example.com')).toBe('sub.example.com');
+  });
+
+  it('returns null for browser internal URLs', () => {
+    expect(extractBaseDomain('chrome://newtab/')).toBeNull();
+    expect(extractBaseDomain('chrome://settings/')).toBeNull();
+    expect(extractBaseDomain('chrome-extension://abcdef/popup.html')).toBeNull();
+  });
+
+  it('returns null for invalid URLs', () => {
+    expect(extractBaseDomain('not-a-valid-url')).toBeNull();
+    expect(extractBaseDomain('')).toBeNull();
+    expect(extractBaseDomain('   ')).toBeNull();
+  });
+
+  it('handles IP addresses and localhost', () => {
+    expect(extractBaseDomain('http://localhost:8080')).toBe('localhost');
+    expect(extractBaseDomain('http://127.0.0.1:3000')).toBe('127.0.0.1');
+    expect(extractBaseDomain('https://192.168.1.1')).toBe('192.168.1.1');
+  });
+
+  it('handles empty hostnames', () => {
+    // about:blank has an empty string for hostname, thus does not hit catch
+    expect(extractBaseDomain('about:blank')).toBe('');
+    expect(extractBaseDomain('file:///C:/path/to/file.txt')).toBe('');
+  });
+});
 
 describe('isValidTabUrl', () => {
   it('rejects chrome://newtab/', () => {
