@@ -32,7 +32,7 @@ export const extractBaseDomain = (url: string): Domain | null => {
   }
 };
 
-const getDeterministicColorForDomain = (domain: Domain): GroupColor => {
+export const getDeterministicColorForDomain = (domain: Domain): GroupColor => {
   const hash = [...domain].reduce(
     (accumulated, char) => (accumulated * 31 + char.charCodeAt(0)) | 0,
     0
