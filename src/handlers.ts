@@ -122,15 +122,13 @@ const ensureDomainIsGroupedInWindow = async (
     title: domain,
   });
 
-  const extensionOwnedGroup = existingGroupsForDomain.find((g) =>
-    extensionGroupIds.has(g.id)
-  );
+  const extensionOwnedGroup = existingGroupsForDomain.find((g) => extensionGroupIds.has(g.id));
 
   if (!extensionOwnedGroup) {
     return await createNewTabGroup(tabIds, domain, windowId);
-  } else {
-    return await addTabsToExistingGroup(tabIds, domain, windowId, extensionOwnedGroup.id);
   }
+
+  return await addTabsToExistingGroup(tabIds, domain, windowId, extensionOwnedGroup.id);
 };
 
 const extractValidTabIds = (tabs: chrome.tabs.Tab[]): TabId[] => {
@@ -151,7 +149,12 @@ export const groupTabsByDomain = async (
 
     for (const [domain, tabIds] of Object.entries(tabIdsByDomain)) {
       if (tabIds.length >= MINIMUM_TABS_TO_GROUP) {
-        const groupId = await ensureDomainIsGroupedInWindow(domain, tabIds, windowId, extensionGroupIds);
+        const groupId = await ensureDomainIsGroupedInWindow(
+          domain,
+          tabIds,
+          windowId,
+          extensionGroupIds
+        );
         if (!extensionGroupIds.has(groupId)) {
           newGroups.set(groupId, domain);
         }
