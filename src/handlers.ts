@@ -122,9 +122,7 @@ const ensureDomainIsGroupedInWindow = async (
     title: domain,
   });
 
-  const extensionOwnedGroup = existingGroupsForDomain.find((g) =>
-    extensionGroupIds.has(g.id)
-  );
+  const extensionOwnedGroup = existingGroupsForDomain.find((g) => extensionGroupIds.has(g.id));
 
   if (!extensionOwnedGroup) {
     return await createNewTabGroup(tabIds, domain, windowId);
@@ -151,7 +149,12 @@ export const groupTabsByDomain = async (
 
     for (const [domain, tabIds] of Object.entries(tabIdsByDomain)) {
       if (tabIds.length >= MINIMUM_TABS_TO_GROUP) {
-        const groupId = await ensureDomainIsGroupedInWindow(domain, tabIds, windowId, extensionGroupIds);
+        const groupId = await ensureDomainIsGroupedInWindow(
+          domain,
+          tabIds,
+          windowId,
+          extensionGroupIds
+        );
         if (!extensionGroupIds.has(groupId)) {
           newGroups.set(groupId, domain);
         }
@@ -187,25 +190,31 @@ export const collapseAllGroupsExcept = async (
   windowId: WindowId
 ): Promise<void> => {
   const allGroupsInWindow = await chrome.tabGroups.query({ windowId });
+  const updatePromises = [];
 
   for (const group of allGroupsInWindow) {
     const isAnotherExpandedGroup = group.id !== expandedGroupId && !group.collapsed;
     if (isAnotherExpandedGroup) {
-      await chrome.tabGroups.update(group.id, { collapsed: true });
+      updatePromises.push(chrome.tabGroups.update(group.id, { collapsed: true }));
     }
   }
+
+  await Promise.all(updatePromises);
 };
 
 export const collapseAllInactiveGroups = async (): Promise<void> => {
   const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   const activeGroupId = activeTab?.groupId ?? -1;
   const allGroups = await chrome.tabGroups.query({});
+  const updatePromises = [];
 
   for (const group of allGroups) {
     if (group.id !== activeGroupId && !group.collapsed) {
-      await chrome.tabGroups.update(group.id, { collapsed: true });
+      updatePromises.push(chrome.tabGroups.update(group.id, { collapsed: true }));
     }
   }
+
+  await Promise.all(updatePromises);
 };
 
 export const isValidTabUrl = (url: string | undefined): boolean => {
