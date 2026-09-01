@@ -19,7 +19,7 @@ const AVAILABLE_GROUP_COLORS: GroupColor[] = [
   'yellow',
 ];
 
-const extractBaseDomain = (url: string): Domain | null => {
+export const extractBaseDomain = (url: string): Domain | null => {
   try {
     const { hostname, protocol } = new URL(url);
 
@@ -57,7 +57,7 @@ const buildTabIdsByDomainByWindow = (
   tabs: chrome.tabs.Tab[],
   extensionGroupIds: Map<number, string>
 ): TabIdsByDomainByWindow => {
-  const result: TabIdsByDomainByWindow = {};
+  const result: TabIdsByDomainByWindow = Object.create(null);
 
   for (const tab of tabs) {
     if (!isGroupableTab(tab)) continue;
@@ -66,7 +66,7 @@ const buildTabIdsByDomainByWindow = (
     const domain = extractBaseDomain(tab.url!);
     if (!domain) continue;
 
-    result[tab.windowId] ??= {};
+    result[tab.windowId] ??= Object.create(null);
     result[tab.windowId][domain] ??= [];
     result[tab.windowId][domain].push(tab.id!);
   }
@@ -126,9 +126,9 @@ const ensureDomainIsGroupedInWindow = async (
 
   if (!extensionOwnedGroup) {
     return await createNewTabGroup(tabIds, domain, windowId);
-  } else {
-    return await addTabsToExistingGroup(tabIds, domain, windowId, extensionOwnedGroup.id);
   }
+
+  return await addTabsToExistingGroup(tabIds, domain, windowId, extensionOwnedGroup.id);
 };
 
 const extractValidTabIds = (tabs: chrome.tabs.Tab[]): TabId[] => {
@@ -170,12 +170,22 @@ export const dissolveGroupsWithTooFewTabs = async (
   extensionGroupIds: Map<number, string> = new Map()
 ): Promise<void> => {
   const allGroups = await chrome.tabGroups.query({});
+  const allTabs = await chrome.tabs.query({});
   const MINIMUM_TABS_TO_GROUP = shouldGroupSingleTabs ? 1 : 2;
+
+  const tabsByGroupId = new Map<number, chrome.tabs.Tab[]>();
+  for (const tab of allTabs) {
+    if (tab.groupId !== undefined && tab.groupId !== -1) {
+      const groupTabs = tabsByGroupId.get(tab.groupId) || [];
+      groupTabs.push(tab);
+      tabsByGroupId.set(tab.groupId, groupTabs);
+    }
+  }
 
   for (const group of allGroups) {
     if (!extensionGroupIds.has(group.id)) continue;
 
-    const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+    const tabsInGroup = tabsByGroupId.get(group.id) || [];
     const tabIds = extractValidTabIds(tabsInGroup);
 
     const hasTooFewTabs = tabsInGroup.length < MINIMUM_TABS_TO_GROUP;
@@ -190,25 +200,31 @@ export const collapseAllGroupsExcept = async (
   windowId: WindowId
 ): Promise<void> => {
   const allGroupsInWindow = await chrome.tabGroups.query({ windowId });
+  const updatePromises = [];
 
   for (const group of allGroupsInWindow) {
     const isAnotherExpandedGroup = group.id !== expandedGroupId && !group.collapsed;
     if (isAnotherExpandedGroup) {
-      await chrome.tabGroups.update(group.id, { collapsed: true });
+      updatePromises.push(chrome.tabGroups.update(group.id, { collapsed: true }));
     }
   }
+
+  await Promise.all(updatePromises);
 };
 
 export const collapseAllInactiveGroups = async (): Promise<void> => {
   const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   const activeGroupId = activeTab?.groupId ?? -1;
   const allGroups = await chrome.tabGroups.query({});
+  const updatePromises = [];
 
   for (const group of allGroups) {
     if (group.id !== activeGroupId && !group.collapsed) {
-      await chrome.tabGroups.update(group.id, { collapsed: true });
+      updatePromises.push(chrome.tabGroups.update(group.id, { collapsed: true }));
     }
   }
+
+  await Promise.all(updatePromises);
 };
 
 export const isValidTabUrl = (url: string | undefined): boolean => {
@@ -220,9 +236,14 @@ export const cleanExtensionGroupIds = (
   existingGroups: chrome.tabGroups.TabGroup[]
 ): Map<number, string> => {
   const cleaned = new Map(extensionGroupIds);
+  const existingGroupsMap = new Map<number, chrome.tabGroups.TabGroup>();
+
+  for (const group of existingGroups) {
+    existingGroupsMap.set(group.id, group);
+  }
 
   for (const [groupId, expectedDomain] of extensionGroupIds) {
-    const group = existingGroups.find((g) => g.id === groupId);
+    const group = existingGroupsMap.get(groupId);
     if (!group || group.title !== expectedDomain) {
       cleaned.delete(groupId);
     }

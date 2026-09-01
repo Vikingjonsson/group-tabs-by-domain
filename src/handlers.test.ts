@@ -6,6 +6,7 @@ import {
   isValidTabUrl,
   cleanExtensionGroupIds,
   getDeterministicColorForDomain,
+  extractBaseDomain,
 } from './handlers';
 
 const mockTabs: chrome.tabs.Tab[] = [];
@@ -196,6 +197,45 @@ describe('getDeterministicColorForDomain', () => {
       'yellow',
     ];
     expect(AVAILABLE_GROUP_COLORS).toContain(color);
+describe('extractBaseDomain', () => {
+  it('extracts standard domains correctly', () => {
+    expect(extractBaseDomain('https://example.com')).toBe('example.com');
+    expect(extractBaseDomain('http://google.com/search?q=test')).toBe('google.com');
+  });
+
+  it('strips www. prefix', () => {
+    expect(extractBaseDomain('https://www.example.com')).toBe('example.com');
+    expect(extractBaseDomain('http://www.google.com/search?q=test')).toBe('google.com');
+  });
+
+  it('preserves other subdomains', () => {
+    expect(extractBaseDomain('https://maps.google.com')).toBe('maps.google.com');
+    expect(extractBaseDomain('http://blog.example.com/post/1')).toBe('blog.example.com');
+    expect(extractBaseDomain('https://www.sub.example.com')).toBe('sub.example.com');
+  });
+
+  it('returns null for browser internal URLs', () => {
+    expect(extractBaseDomain('chrome://newtab/')).toBeNull();
+    expect(extractBaseDomain('chrome://settings/')).toBeNull();
+    expect(extractBaseDomain('chrome-extension://abcdef/popup.html')).toBeNull();
+  });
+
+  it('returns null for invalid URLs', () => {
+    expect(extractBaseDomain('not-a-valid-url')).toBeNull();
+    expect(extractBaseDomain('')).toBeNull();
+    expect(extractBaseDomain('   ')).toBeNull();
+  });
+
+  it('handles IP addresses and localhost', () => {
+    expect(extractBaseDomain('http://localhost:8080')).toBe('localhost');
+    expect(extractBaseDomain('http://127.0.0.1:3000')).toBe('127.0.0.1');
+    expect(extractBaseDomain('https://192.168.1.1')).toBe('192.168.1.1');
+  });
+
+  it('handles empty hostnames', () => {
+    // about:blank has an empty string for hostname, thus does not hit catch
+    expect(extractBaseDomain('about:blank')).toBe('');
+    expect(extractBaseDomain('file:///C:/path/to/file.txt')).toBe('');
   });
 });
 
@@ -347,6 +387,20 @@ describe('groupTabsByDomain', () => {
       'yellow',
     ];
     expect(VALID_COLORS).toContain(mockGroups[0].color);
+  });
+
+  it('safely handles URLs with __proto__ hostname', async () => {
+    createMockTab(1, 'https://__proto__/a', 1);
+    createMockTab(2, 'https://__proto__/b', 1);
+    await groupTabsByDomain();
+
+    expect(mockGroups).toHaveLength(1);
+    expect(mockGroups[0].title).toBe('__proto__');
+
+    // Ensure Object.prototype wasn't polluted with an array
+    expect(
+      Array.isArray((Object.prototype as any)['__proto__']) || Array.isArray(Object.prototype)
+    ).toBe(false);
   });
 });
 
