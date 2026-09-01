@@ -195,36 +195,32 @@ export const dissolveGroupsWithTooFewTabs = async (
   }
 };
 
+const collapseNonTargetGroups = async (
+  groups: chrome.tabGroups.TabGroup[],
+  targetGroupId: number
+): Promise<void> => {
+  const updatePromises = [];
+  for (const group of groups) {
+    if (group.id !== targetGroupId && !group.collapsed) {
+      updatePromises.push(chrome.tabGroups.update(group.id, { collapsed: true }));
+    }
+  }
+  await Promise.all(updatePromises);
+};
+
 export const collapseAllGroupsExcept = async (
   expandedGroupId: number,
   windowId: WindowId
 ): Promise<void> => {
   const allGroupsInWindow = await chrome.tabGroups.query({ windowId });
-  const updatePromises = [];
-
-  for (const group of allGroupsInWindow) {
-    const isAnotherExpandedGroup = group.id !== expandedGroupId && !group.collapsed;
-    if (isAnotherExpandedGroup) {
-      updatePromises.push(chrome.tabGroups.update(group.id, { collapsed: true }));
-    }
-  }
-
-  await Promise.all(updatePromises);
+  await collapseNonTargetGroups(allGroupsInWindow, expandedGroupId);
 };
 
 export const collapseAllInactiveGroups = async (): Promise<void> => {
   const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   const activeGroupId = activeTab?.groupId ?? -1;
   const allGroups = await chrome.tabGroups.query({});
-  const updatePromises = [];
-
-  for (const group of allGroups) {
-    if (group.id !== activeGroupId && !group.collapsed) {
-      updatePromises.push(chrome.tabGroups.update(group.id, { collapsed: true }));
-    }
-  }
-
-  await Promise.all(updatePromises);
+  await collapseNonTargetGroups(allGroups, activeGroupId);
 };
 
 export const isValidTabUrl = (url: string | undefined): boolean => {
