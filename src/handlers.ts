@@ -167,12 +167,22 @@ export const dissolveGroupsWithTooFewTabs = async (
   extensionGroupIds: Map<number, string> = new Map()
 ): Promise<void> => {
   const allGroups = await chrome.tabGroups.query({});
+  const allTabs = await chrome.tabs.query({});
   const MINIMUM_TABS_TO_GROUP = shouldGroupSingleTabs ? 1 : 2;
+
+  const tabsByGroupId = new Map<number, chrome.tabs.Tab[]>();
+  for (const tab of allTabs) {
+    if (tab.groupId !== undefined && tab.groupId !== -1) {
+      const groupTabs = tabsByGroupId.get(tab.groupId) || [];
+      groupTabs.push(tab);
+      tabsByGroupId.set(tab.groupId, groupTabs);
+    }
+  }
 
   for (const group of allGroups) {
     if (!extensionGroupIds.has(group.id)) continue;
 
-    const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+    const tabsInGroup = tabsByGroupId.get(group.id) || [];
     const tabIds = extractValidTabIds(tabsInGroup);
 
     const hasTooFewTabs = tabsInGroup.length < MINIMUM_TABS_TO_GROUP;
