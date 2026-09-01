@@ -200,25 +200,31 @@ export const collapseAllGroupsExcept = async (
   windowId: WindowId
 ): Promise<void> => {
   const allGroupsInWindow = await chrome.tabGroups.query({ windowId });
+  const updatePromises = [];
 
   for (const group of allGroupsInWindow) {
     const isAnotherExpandedGroup = group.id !== expandedGroupId && !group.collapsed;
     if (isAnotherExpandedGroup) {
-      await chrome.tabGroups.update(group.id, { collapsed: true });
+      updatePromises.push(chrome.tabGroups.update(group.id, { collapsed: true }));
     }
   }
+
+  await Promise.all(updatePromises);
 };
 
 export const collapseAllInactiveGroups = async (): Promise<void> => {
   const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   const activeGroupId = activeTab?.groupId ?? -1;
   const allGroups = await chrome.tabGroups.query({});
+  const updatePromises = [];
 
   for (const group of allGroups) {
     if (group.id !== activeGroupId && !group.collapsed) {
-      await chrome.tabGroups.update(group.id, { collapsed: true });
+      updatePromises.push(chrome.tabGroups.update(group.id, { collapsed: true }));
     }
   }
+
+  await Promise.all(updatePromises);
 };
 
 export const isValidTabUrl = (url: string | undefined): boolean => {
