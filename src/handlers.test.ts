@@ -197,6 +197,9 @@ describe('getDeterministicColorForDomain', () => {
       'yellow',
     ];
     expect(AVAILABLE_GROUP_COLORS).toContain(color);
+  });
+});
+
 describe('extractBaseDomain', () => {
   it('extracts standard domains correctly', () => {
     expect(extractBaseDomain('https://example.com')).toBe('example.com');
