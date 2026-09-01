@@ -57,7 +57,7 @@ const buildTabIdsByDomainByWindow = (
   tabs: chrome.tabs.Tab[],
   extensionGroupIds: Map<number, string>
 ): TabIdsByDomainByWindow => {
-  const result: TabIdsByDomainByWindow = {};
+  const result: TabIdsByDomainByWindow = Object.create(null);
 
   for (const tab of tabs) {
     if (!isGroupableTab(tab)) continue;
@@ -66,7 +66,7 @@ const buildTabIdsByDomainByWindow = (
     const domain = extractBaseDomain(tab.url!);
     if (!domain) continue;
 
-    result[tab.windowId] ??= {};
+    result[tab.windowId] ??= Object.create(null);
     result[tab.windowId][domain] ??= [];
     result[tab.windowId][domain].push(tab.id!);
   }
