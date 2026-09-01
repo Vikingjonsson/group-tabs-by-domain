@@ -8,17 +8,17 @@ import {
   getDeterministicColorForDomain,
 } from './handlers';
 
-
 const mockTabs: chrome.tabs.Tab[] = [];
 const mockGroups: chrome.tabGroups.TabGroup[] = [];
 const mockState = { nextGroupId: 1 };
-
 
 const chromeMock = {
   tabs: {
     query: jest.fn().mockImplementation((queryInfo?: chrome.tabs.QueryInfo) => {
       const filtered = mockTabs
-        .filter((tab) => (queryInfo?.groupId !== undefined ? tab.groupId === queryInfo.groupId : true))
+        .filter((tab) =>
+          queryInfo?.groupId !== undefined ? tab.groupId === queryInfo.groupId : true
+        )
         .filter((tab) => (queryInfo?.active !== undefined ? tab.active === queryInfo.active : true))
         .filter(() => (queryInfo?.lastFocusedWindow !== undefined ? true : true));
 
@@ -66,7 +66,9 @@ const chromeMock = {
   tabGroups: {
     query: jest.fn().mockImplementation((queryInfo?: chrome.tabGroups.QueryInfo) => {
       const filtered = mockGroups
-        .filter((g) => (queryInfo?.windowId !== undefined ? g.windowId === queryInfo.windowId : true))
+        .filter((g) =>
+          queryInfo?.windowId !== undefined ? g.windowId === queryInfo.windowId : true
+        )
         .filter((g) => (queryInfo?.title !== undefined ? g.title === queryInfo.title : true));
 
       return Promise.resolve(filtered);
@@ -87,7 +89,6 @@ const chromeMock = {
 };
 
 (globalThis as any).chrome = chromeMock;
-
 
 const createMockTab = (id: number, url: string, windowId = 1): chrome.tabs.Tab => {
   const tab = {
@@ -141,12 +142,19 @@ const setActiveTab = (tabIndex: number): void => {
   (mockTabs[tabIndex] as any).active = true;
 };
 
-
 describe('getDeterministicColorForDomain', () => {
   it('returns a valid color for a standard domain', () => {
     const color = getDeterministicColorForDomain('google.com');
     const AVAILABLE_GROUP_COLORS = [
-      'blue', 'cyan', 'green', 'grey', 'orange', 'pink', 'purple', 'red', 'yellow'
+      'blue',
+      'cyan',
+      'green',
+      'grey',
+      'orange',
+      'pink',
+      'purple',
+      'red',
+      'yellow',
     ];
     expect(AVAILABLE_GROUP_COLORS).toContain(color);
   });
@@ -160,7 +168,15 @@ describe('getDeterministicColorForDomain', () => {
   it('handles empty string domain gracefully', () => {
     const color = getDeterministicColorForDomain('');
     const AVAILABLE_GROUP_COLORS = [
-      'blue', 'cyan', 'green', 'grey', 'orange', 'pink', 'purple', 'red', 'yellow'
+      'blue',
+      'cyan',
+      'green',
+      'grey',
+      'orange',
+      'pink',
+      'purple',
+      'red',
+      'yellow',
     ];
     expect(AVAILABLE_GROUP_COLORS).toContain(color);
   });
@@ -169,7 +185,15 @@ describe('getDeterministicColorForDomain', () => {
     const longDomain = 'a'.repeat(1000) + '.com';
     const color = getDeterministicColorForDomain(longDomain);
     const AVAILABLE_GROUP_COLORS = [
-      'blue', 'cyan', 'green', 'grey', 'orange', 'pink', 'purple', 'red', 'yellow'
+      'blue',
+      'cyan',
+      'green',
+      'grey',
+      'orange',
+      'pink',
+      'purple',
+      'red',
+      'yellow',
     ];
     expect(AVAILABLE_GROUP_COLORS).toContain(color);
   });
@@ -312,7 +336,15 @@ describe('groupTabsByDomain', () => {
     await groupTabsByDomain(true);
 
     const VALID_COLORS = [
-      'blue', 'cyan', 'green', 'grey', 'orange', 'pink', 'purple', 'red', 'yellow',
+      'blue',
+      'cyan',
+      'green',
+      'grey',
+      'orange',
+      'pink',
+      'purple',
+      'red',
+      'yellow',
     ];
     expect(VALID_COLORS).toContain(mockGroups[0].color);
   });
@@ -726,9 +758,19 @@ describe('collapseAllInactiveGroups', () => {
 
 describe('cleanExtensionGroupIds', () => {
   it('removes stale group IDs that no longer exist', () => {
-    const extensionGroupIds = new Map<number, string>([[1, 'google.com'], [2, 'github.com']]);
+    const extensionGroupIds = new Map<number, string>([
+      [1, 'google.com'],
+      [2, 'github.com'],
+    ]);
     const existingGroups: chrome.tabGroups.TabGroup[] = [
-      { id: 1, windowId: 1, collapsed: false, title: 'google.com', color: 'blue' as chrome.tabGroups.Color, shared: false },
+      {
+        id: 1,
+        windowId: 1,
+        collapsed: false,
+        title: 'google.com',
+        color: 'blue' as chrome.tabGroups.Color,
+        shared: false,
+      },
     ];
 
     const cleaned = cleanExtensionGroupIds(extensionGroupIds, existingGroups);
@@ -740,7 +782,14 @@ describe('cleanExtensionGroupIds', () => {
   it('removes groups whose title was renamed by the user', () => {
     const extensionGroupIds = new Map<number, string>([[1, 'google.com']]);
     const existingGroups: chrome.tabGroups.TabGroup[] = [
-      { id: 1, windowId: 1, collapsed: false, title: 'My Search Tabs', color: 'blue' as chrome.tabGroups.Color, shared: false },
+      {
+        id: 1,
+        windowId: 1,
+        collapsed: false,
+        title: 'My Search Tabs',
+        color: 'blue' as chrome.tabGroups.Color,
+        shared: false,
+      },
     ];
 
     const cleaned = cleanExtensionGroupIds(extensionGroupIds, existingGroups);
@@ -751,7 +800,14 @@ describe('cleanExtensionGroupIds', () => {
   it('keeps groups whose title still matches', () => {
     const extensionGroupIds = new Map<number, string>([[1, 'google.com']]);
     const existingGroups: chrome.tabGroups.TabGroup[] = [
-      { id: 1, windowId: 1, collapsed: false, title: 'google.com', color: 'blue' as chrome.tabGroups.Color, shared: false },
+      {
+        id: 1,
+        windowId: 1,
+        collapsed: false,
+        title: 'google.com',
+        color: 'blue' as chrome.tabGroups.Color,
+        shared: false,
+      },
     ];
 
     const cleaned = cleanExtensionGroupIds(extensionGroupIds, existingGroups);
@@ -761,7 +817,10 @@ describe('cleanExtensionGroupIds', () => {
   });
 
   it('returns empty map when all groups are stale', () => {
-    const extensionGroupIds = new Map<number, string>([[1, 'google.com'], [2, 'github.com']]);
+    const extensionGroupIds = new Map<number, string>([
+      [1, 'google.com'],
+      [2, 'github.com'],
+    ]);
     const existingGroups: chrome.tabGroups.TabGroup[] = [];
 
     const cleaned = cleanExtensionGroupIds(extensionGroupIds, existingGroups);
@@ -772,7 +831,14 @@ describe('cleanExtensionGroupIds', () => {
   it('handles empty input map', () => {
     const extensionGroupIds = new Map<number, string>();
     const existingGroups: chrome.tabGroups.TabGroup[] = [
-      { id: 1, windowId: 1, collapsed: false, title: 'google.com', color: 'blue' as chrome.tabGroups.Color, shared: false },
+      {
+        id: 1,
+        windowId: 1,
+        collapsed: false,
+        title: 'google.com',
+        color: 'blue' as chrome.tabGroups.Color,
+        shared: false,
+      },
     ];
 
     const cleaned = cleanExtensionGroupIds(extensionGroupIds, existingGroups);
