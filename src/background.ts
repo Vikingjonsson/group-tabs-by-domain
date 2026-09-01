@@ -25,9 +25,7 @@ const state = {
 };
 
 const parseStoredExtensionGroupIds = (record: Record<string, string>): Map<number, string> => {
-  return new Map(
-    Object.entries(record).map(([id, domain]) => [parseInt(id, 10), domain])
-  );
+  return new Map(Object.entries(record).map(([id, domain]) => [parseInt(id, 10), domain]));
 };
 
 const loadExtensionGroupIds = async (): Promise<void> => {
