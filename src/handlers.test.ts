@@ -5,6 +5,7 @@ import {
   collapseAllInactiveGroups,
   isValidTabUrl,
   cleanExtensionGroupIds,
+  getDeterministicColorForDomain,
 } from './handlers';
 
 
@@ -140,6 +141,39 @@ const setActiveTab = (tabIndex: number): void => {
   (mockTabs[tabIndex] as any).active = true;
 };
 
+
+describe('getDeterministicColorForDomain', () => {
+  it('returns a valid color for a standard domain', () => {
+    const color = getDeterministicColorForDomain('google.com');
+    const AVAILABLE_GROUP_COLORS = [
+      'blue', 'cyan', 'green', 'grey', 'orange', 'pink', 'purple', 'red', 'yellow'
+    ];
+    expect(AVAILABLE_GROUP_COLORS).toContain(color);
+  });
+
+  it('returns the same color for the same domain consistently', () => {
+    const color1 = getDeterministicColorForDomain('github.com');
+    const color2 = getDeterministicColorForDomain('github.com');
+    expect(color1).toBe(color2);
+  });
+
+  it('handles empty string domain gracefully', () => {
+    const color = getDeterministicColorForDomain('');
+    const AVAILABLE_GROUP_COLORS = [
+      'blue', 'cyan', 'green', 'grey', 'orange', 'pink', 'purple', 'red', 'yellow'
+    ];
+    expect(AVAILABLE_GROUP_COLORS).toContain(color);
+  });
+
+  it('handles long domains gracefully', () => {
+    const longDomain = 'a'.repeat(1000) + '.com';
+    const color = getDeterministicColorForDomain(longDomain);
+    const AVAILABLE_GROUP_COLORS = [
+      'blue', 'cyan', 'green', 'grey', 'orange', 'pink', 'purple', 'red', 'yellow'
+    ];
+    expect(AVAILABLE_GROUP_COLORS).toContain(color);
+  });
+});
 
 describe('isValidTabUrl', () => {
   it('rejects chrome://newtab/', () => {
