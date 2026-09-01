@@ -19,7 +19,7 @@ const AVAILABLE_GROUP_COLORS: GroupColor[] = [
   'yellow',
 ];
 
-const extractBaseDomain = (url: string): Domain | null => {
+export const extractBaseDomain = (url: string): Domain | null => {
   try {
     const { hostname, protocol } = new URL(url);
 
