@@ -24,12 +24,14 @@ const state = {
   extensionGroupIds: new Map<number, string>(),
 };
 
+const parseStoredExtensionGroupIds = (record: Record<string, string>): Map<number, string> => {
+  return new Map(Object.entries(record).map(([id, domain]) => [parseInt(id, 10), domain]));
+};
+
 const loadExtensionGroupIds = async (): Promise<void> => {
   const stored = await chrome.storage.session.get({ [STORAGE_KEY_EXTENSION_GROUP_IDS]: {} });
   const record = stored[STORAGE_KEY_EXTENSION_GROUP_IDS] as Record<string, string>;
-  state.extensionGroupIds = new Map(
-    Object.entries(record).map(([id, domain]) => [parseInt(id, 10), domain])
-  );
+  state.extensionGroupIds = parseStoredExtensionGroupIds(record);
 };
 
 const saveExtensionGroupIds = async (): Promise<void> => {
