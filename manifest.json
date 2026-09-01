@@ -3,12 +3,7 @@
   "name": "Group Tabs by Domain",
   "version": "1.2.0",
   "description": "Automatically groups browser tabs by domain. Toggle grouping for single tabs on or off via the extension icon.",
-  "permissions": [
-    "tabs",
-    "tabGroups",
-    "storage",
-    "contextMenus"
-  ],
+  "permissions": ["tabs", "tabGroups", "storage", "contextMenus"],
   "action": {},
   "background": {
     "service_worker": "background.js"
