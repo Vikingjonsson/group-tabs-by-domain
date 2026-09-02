@@ -47,8 +47,6 @@ const processTabChanges = async (): Promise<void> => {
 
   state.isProcessingTabChanges = true;
   try {
-    await refreshSettingsFromStorage();
-
     const allGroups = await chrome.tabGroups.query({});
     state.extensionGroupIds = cleanExtensionGroupIds(state.extensionGroupIds, allGroups);
 
@@ -168,8 +166,6 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
 chrome.tabs.onRemoved.addListener(scheduleTabProcessing);
 
 chrome.tabGroups.onUpdated.addListener(async (updatedGroup) => {
-  await refreshSettingsFromStorage();
-
   const shouldSkip =
     !state.shouldAutoCollapseInactive || state.isCollapsingGroups || updatedGroup.collapsed;
   if (shouldSkip) return;
