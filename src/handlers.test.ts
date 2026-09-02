@@ -235,10 +235,10 @@ describe('extractBaseDomain', () => {
     expect(extractBaseDomain('https://192.168.1.1')).toBe('192.168.1.1');
   });
 
-  it('handles empty hostnames', () => {
-    // about:blank has an empty string for hostname, thus does not hit catch
-    expect(extractBaseDomain('about:blank')).toBe('');
-    expect(extractBaseDomain('file:///C:/path/to/file.txt')).toBe('');
+  it('returns null for empty hostnames and file protocols', () => {
+    // about:blank has an empty string for hostname, but the protocol is not allowed
+    expect(extractBaseDomain('about:blank')).toBeNull();
+    expect(extractBaseDomain('file:///C:/path/to/file.txt')).toBeNull();
   });
 });
 
