@@ -183,6 +183,8 @@ export const dissolveGroupsWithTooFewTabs = async (
     }
   }
 
+  const allTabIdsToUngroup: TabId[] = [];
+
   for (const group of allGroups) {
     if (!extensionGroupIds.has(group.id)) continue;
 
@@ -191,8 +193,12 @@ export const dissolveGroupsWithTooFewTabs = async (
 
     const hasTooFewTabs = tabsInGroup.length < MINIMUM_TABS_TO_GROUP;
     if (hasTooFewTabs && tabIds.length > 0) {
-      await chrome.tabs.ungroup(asNonEmptyArray(tabIds));
+      allTabIdsToUngroup.push(...tabIds);
     }
+  }
+
+  if (allTabIdsToUngroup.length > 0) {
+    await chrome.tabs.ungroup(asNonEmptyArray(allTabIdsToUngroup));
   }
 };
 
