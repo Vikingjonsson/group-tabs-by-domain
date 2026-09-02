@@ -130,7 +130,13 @@ const ensureDomainIsGroupedInWindow = async (
 };
 
 const extractValidTabIds = (tabs: chrome.tabs.Tab[]): TabId[] => {
-  return tabs.map((tab) => tab.id).filter((id): id is TabId => id !== undefined);
+  const validIds: TabId[] = [];
+  for (const tab of tabs) {
+    if (tab.id !== undefined) {
+      validIds.push(tab.id);
+    }
+  }
+  return validIds;
 };
 
 export const groupTabsByDomain = async (
