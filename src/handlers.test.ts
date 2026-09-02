@@ -229,6 +229,11 @@ describe('extractBaseDomain', () => {
     expect(extractBaseDomain('   ')).toBeNull();
   });
 
+  it('returns null when URL constructor throws (unparseable invalid URL string)', () => {
+    // Passes an explicitly unparseable invalid URL string to trigger the catch block
+    expect(extractBaseDomain('://invalid-url')).toBeNull();
+  });
+
   it('handles IP addresses and localhost', () => {
     expect(extractBaseDomain('http://localhost:8080')).toBe('localhost');
     expect(extractBaseDomain('http://127.0.0.1:3000')).toBe('127.0.0.1');
