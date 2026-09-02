@@ -358,6 +358,34 @@ describe('groupTabsByDomain', () => {
     expect(getTabsInGroup(mockGroups[0].id)).toHaveLength(3);
   });
 
+  it('falls back to creating a new group if adding to existing group fails', async () => {
+    createMockTab(1, 'https://example.com/a', 1);
+    createMockTab(2, 'https://example.com/b', 1);
+    const extensionGroups = await groupTabsByDomain();
+    expect(mockGroups).toHaveLength(1);
+
+    const existingGroupId = mockGroups[0].id;
+    createMockTab(3, 'https://example.com/c', 1);
+
+    const originalGroup = chromeMock.tabs.group;
+    chromeMock.tabs.group = jest.fn().mockImplementation((options: chrome.tabs.GroupOptions) => {
+      if (options.groupId === existingGroupId) {
+        return Promise.reject(new Error('Simulated failure adding to group'));
+      }
+      return originalGroup(options);
+    });
+
+    try {
+      await groupTabsByDomain(false, extensionGroups);
+
+      expect(mockGroups).toHaveLength(2);
+      expect(mockTabs[2].groupId).toBe(mockGroups[1].id);
+      expect(mockGroups[1].title).toBe('example.com');
+    } finally {
+      chromeMock.tabs.group = originalGroup;
+    }
+  });
+
   it('assigns the same color for the same domain across runs', async () => {
     createMockTab(1, 'https://example.com/a', 1);
     createMockTab(2, 'https://example.com/b', 1);
