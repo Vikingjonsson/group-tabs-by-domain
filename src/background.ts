@@ -124,13 +124,9 @@ const initializeExtension = async (): Promise<void> => {
   createContextMenu();
 };
 
-chrome.runtime.onInstalled.addListener(() => {
-  initializeExtension();
-});
+chrome.runtime.onInstalled.addListener(initializeExtension);
 
-chrome.runtime.onStartup.addListener(() => {
-  initializeExtension();
-});
+chrome.runtime.onStartup.addListener(initializeExtension);
 
 chrome.contextMenus.onClicked.addListener(async (info) => {
   if (info.menuItemId === MENU_ID_GROUP_SINGLE_TABS) {
