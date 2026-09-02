@@ -371,6 +371,24 @@ describe('isCollapsingGroups guard', () => {
 });
 
 describe('extension group ids storage', () => {
+  it('loads extension group ids on initialization', async () => {
+    chromeMock.storage.session.get.mockResolvedValueOnce({
+      extensionGroupIds: { '123': 'test.com' },
+    });
+
+    await triggerListener('runtime.onInstalled');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Force an event that uses the state to verify it was loaded
+    await triggerListener('tabs.onCreated', { url: 'https://test.com' });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(handlers.cleanExtensionGroupIds).toHaveBeenCalledWith(
+      new Map([[123, 'test.com']]),
+      expect.any(Array)
+    );
+  });
+
   it('saves extension group ids', async () => {
     // First, need to simulate some group ids being added.
     // This happens inside processTabChanges.
