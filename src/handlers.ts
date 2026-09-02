@@ -23,8 +23,8 @@ export const extractBaseDomain = (url: string): Domain | null => {
   try {
     const { hostname, protocol } = new URL(url);
 
-    const isBrowserInternalUrl = protocol === 'chrome:' || protocol === 'chrome-extension:';
-    if (isBrowserInternalUrl) return null;
+    const isAllowedProtocol = protocol === 'http:' || protocol === 'https:';
+    if (!isAllowedProtocol) return null;
 
     return hostname.replace(/^www\./, '');
   } catch {
