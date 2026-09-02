@@ -169,9 +169,7 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
   }
 });
 
-chrome.tabs.onRemoved.addListener(() => {
-  scheduleTabProcessing();
-});
+chrome.tabs.onRemoved.addListener(scheduleTabProcessing);
 
 chrome.tabGroups.onUpdated.addListener(async (updatedGroup) => {
   await refreshSettingsFromStorage();
