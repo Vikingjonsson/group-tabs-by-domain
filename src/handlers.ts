@@ -34,7 +34,8 @@ export const extractBaseDomain = (url: string): Domain | null => {
 
 export const getDeterministicColorForDomain = (domain: Domain): GroupColor => {
   let hash = 0;
-  for (let i = 0; i < domain.length; i++) {
+  const limit = Math.min(domain.length, 100);
+  for (let i = 0; i < limit; i++) {
     hash = (hash * 31 + domain.charCodeAt(i)) | 0;
   }
   return AVAILABLE_GROUP_COLORS[Math.abs(hash) % AVAILABLE_GROUP_COLORS.length];
