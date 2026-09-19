@@ -141,17 +141,19 @@ const extractValidTabIds = (tabs: chrome.tabs.Tab[]): TabId[] => {
 
 export const groupTabsByDomain = async (
   shouldGroupSingleTabs = false,
-  extensionGroupIds: Map<number, string> = new Map()
+  extensionGroupIds: Map<number, string> = new Map(),
+  allTabs?: chrome.tabs.Tab[],
+  allGroups?: chrome.tabGroups.TabGroup[]
 ): Promise<Map<number, string>> => {
-  const allTabs = await chrome.tabs.query({});
-  const allGroups = await chrome.tabGroups.query({});
-  const tabIdsByDomainByWindow = buildTabIdsByDomainByWindow(allTabs, extensionGroupIds);
+  const tabs = allTabs ?? (await chrome.tabs.query({}));
+  const groups = allGroups ?? (await chrome.tabGroups.query({}));
+  const tabIdsByDomainByWindow = buildTabIdsByDomainByWindow(tabs, extensionGroupIds);
   const MINIMUM_TABS_TO_GROUP = shouldGroupSingleTabs ? 1 : 2;
   const newGroups = new Map<number, string>();
 
   for (const [windowIdString, tabIdsByDomain] of Object.entries(tabIdsByDomainByWindow)) {
     const windowId = parseInt(windowIdString, 10);
-    const existingGroupsForWindow = allGroups.filter((g) => g.windowId === windowId);
+    const existingGroupsForWindow = groups.filter((g) => g.windowId === windowId);
 
     for (const [domain, tabIds] of Object.entries(tabIdsByDomain)) {
       if (tabIds.length >= MINIMUM_TABS_TO_GROUP) {
@@ -174,14 +176,16 @@ export const groupTabsByDomain = async (
 
 export const dissolveGroupsWithTooFewTabs = async (
   shouldGroupSingleTabs = false,
-  extensionGroupIds: Map<number, string> = new Map()
+  extensionGroupIds: Map<number, string> = new Map(),
+  allGroups?: chrome.tabGroups.TabGroup[],
+  allTabs?: chrome.tabs.Tab[]
 ): Promise<void> => {
-  const allGroups = await chrome.tabGroups.query({});
-  const allTabs = await chrome.tabs.query({});
+  const groups = allGroups ?? (await chrome.tabGroups.query({}));
+  const tabs = allTabs ?? (await chrome.tabs.query({}));
   const MINIMUM_TABS_TO_GROUP = shouldGroupSingleTabs ? 1 : 2;
 
   const tabsByGroupId = new Map<number, chrome.tabs.Tab[]>();
-  for (const tab of allTabs) {
+  for (const tab of tabs) {
     if (tab.groupId !== undefined && tab.groupId !== -1) {
       const groupTabs = tabsByGroupId.get(tab.groupId) || [];
       groupTabs.push(tab);
@@ -191,7 +195,7 @@ export const dissolveGroupsWithTooFewTabs = async (
 
   const allTabIdsToUngroup: TabId[] = [];
 
-  for (const group of allGroups) {
+  for (const group of groups) {
     if (!extensionGroupIds.has(group.id)) continue;
 
     const tabsInGroup = tabsByGroupId.get(group.id) || [];

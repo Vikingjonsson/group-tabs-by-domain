@@ -48,14 +48,25 @@ const processTabChanges = async (): Promise<void> => {
   state.isProcessingTabChanges = true;
   try {
     const allGroups = await chrome.tabGroups.query({});
+    const allTabs = await chrome.tabs.query({});
     state.extensionGroupIds = cleanExtensionGroupIds(state.extensionGroupIds, allGroups);
 
-    const newGroups = await groupTabsByDomain(state.shouldGroupSingleTabs, state.extensionGroupIds);
+    const newGroups = await groupTabsByDomain(
+      state.shouldGroupSingleTabs,
+      state.extensionGroupIds,
+      allTabs,
+      allGroups
+    );
     for (const [groupId, domain] of newGroups) {
       state.extensionGroupIds.set(groupId, domain);
     }
 
-    await dissolveGroupsWithTooFewTabs(state.shouldGroupSingleTabs, state.extensionGroupIds);
+    await dissolveGroupsWithTooFewTabs(
+      state.shouldGroupSingleTabs,
+      state.extensionGroupIds,
+      allGroups,
+      allTabs
+    );
     await saveExtensionGroupIds();
   } finally {
     state.isProcessingTabChanges = false;
