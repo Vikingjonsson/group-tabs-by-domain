@@ -7,6 +7,7 @@ import {
   cleanExtensionGroupIds,
   getDeterministicColorForDomain,
   extractBaseDomain,
+  asNonEmptyArray,
 } from './handlers';
 
 const mockTabs: chrome.tabs.Tab[] = [];
@@ -142,6 +143,17 @@ const setActiveTab = (tabIndex: number): void => {
   }
   (mockTabs[tabIndex] as any).active = true;
 };
+
+describe('asNonEmptyArray', () => {
+  it('throws an error if the array is empty', () => {
+    expect(() => asNonEmptyArray([])).toThrow('Expected non-empty array');
+  });
+
+  it('returns the same array if it is not empty', () => {
+    const arr = [1, 2, 3];
+    expect(asNonEmptyArray(arr)).toBe(arr);
+  });
+});
 
 describe('getDeterministicColorForDomain', () => {
   it('returns a valid color for a standard domain', () => {

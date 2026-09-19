@@ -74,7 +74,7 @@ const buildTabIdsByDomainByWindow = (
   return result;
 };
 
-const asNonEmptyArray = (tabIds: TabId[]): [TabId, ...TabId[]] => {
+export const asNonEmptyArray = (tabIds: TabId[]): [TabId, ...TabId[]] => {
   if (tabIds.length === 0) throw new Error('Expected non-empty array');
   return tabIds as [TabId, ...TabId[]];
 };
