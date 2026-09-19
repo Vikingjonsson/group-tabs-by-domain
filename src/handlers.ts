@@ -149,25 +149,31 @@ export const groupTabsByDomain = async (
   const MINIMUM_TABS_TO_GROUP = shouldGroupSingleTabs ? 1 : 2;
   const newGroups = new Map<number, string>();
 
+  const groupPromises: Promise<void>[] = [];
+
   for (const [windowIdString, tabIdsByDomain] of Object.entries(tabIdsByDomainByWindow)) {
     const windowId = parseInt(windowIdString, 10);
     const existingGroupsForWindow = allGroups.filter((g) => g.windowId === windowId);
 
     for (const [domain, tabIds] of Object.entries(tabIdsByDomain)) {
       if (tabIds.length >= MINIMUM_TABS_TO_GROUP) {
-        const groupId = await ensureDomainIsGroupedInWindow(
+        const promise = ensureDomainIsGroupedInWindow(
           domain,
           tabIds,
           windowId,
           extensionGroupIds,
           existingGroupsForWindow
-        );
-        if (!extensionGroupIds.has(groupId)) {
-          newGroups.set(groupId, domain);
-        }
+        ).then((groupId) => {
+          if (!extensionGroupIds.has(groupId)) {
+            newGroups.set(groupId, domain);
+          }
+        });
+        groupPromises.push(promise);
       }
     }
   }
+
+  await Promise.all(groupPromises);
 
   return newGroups;
 };
