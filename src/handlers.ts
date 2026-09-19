@@ -97,7 +97,7 @@ const createNewTabGroup = async (
   return groupId;
 };
 
-const addTabsToExistingGroup = async (
+export const addTabsToExistingGroup = async (
   tabIds: TabId[],
   domain: Domain,
   windowId: WindowId,
