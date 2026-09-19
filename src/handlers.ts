@@ -183,9 +183,12 @@ export const dissolveGroupsWithTooFewTabs = async (
   const tabsByGroupId = new Map<number, chrome.tabs.Tab[]>();
   for (const tab of allTabs) {
     if (tab.groupId !== undefined && tab.groupId !== -1) {
-      const groupTabs = tabsByGroupId.get(tab.groupId) || [];
-      groupTabs.push(tab);
-      tabsByGroupId.set(tab.groupId, groupTabs);
+      const groupTabs = tabsByGroupId.get(tab.groupId);
+      if (groupTabs) {
+        groupTabs.push(tab);
+      } else {
+        tabsByGroupId.set(tab.groupId, [tab]);
+      }
     }
   }
 
