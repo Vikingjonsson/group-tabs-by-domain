@@ -315,6 +315,19 @@ describe('groupTabsByDomain', () => {
     expect(getTabsInGroup(mockGroups[0].id)).toHaveLength(2);
   });
 
+  it('ignores tabs with unparseable invalid URL string', async () => {
+    createMockTab(1, '://invalid-url', 1);
+    createMockTab(2, '://another-invalid-url', 1);
+    createMockTab(3, 'https://example.com/a', 1);
+    createMockTab(4, 'https://example.com/b', 1);
+
+    await groupTabsByDomain();
+
+    expect(mockGroups).toHaveLength(1);
+    expect(mockGroups[0].title).toBe('example.com');
+    expect(getTabsInGroup(mockGroups[0].id)).toHaveLength(2);
+  });
+
   it('strips www. prefix when grouping', async () => {
     createMockTab(1, 'https://www.example.com/page1', 1);
     createMockTab(2, 'https://example.com/page2', 1);
